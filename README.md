@@ -1,4 +1,3 @@
-# 파라곤 정산 시스템 - 프론트
 
 ## 개발도구 - Visual Studio Code
 
