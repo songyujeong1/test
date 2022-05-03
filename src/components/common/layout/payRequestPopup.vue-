@@ -1,0 +1,1438 @@
+<template>
+<div>
+  <el-dialog :visible.sync="notKRWDialogVisible" width="70%" min-height="400" @close="initializeComponent" :close-on-click-modal="false" style="margin-top:-75px">
+    <div class="charge-confirm-info">
+      <div class="panel-head row">
+        <div class="col-md-4">
+          <h4 slot="title">지급요청서 상세</h4>
+        </div>
+      </div>
+      <table class="table-basic">
+        <colgroup>
+          <col style="width:15%;" />
+          <col style="width:35%;" />
+          <col style="width:15%;" />
+          <col style="width:35%;" />
+        </colgroup>
+        <tbody style="text-align:center">
+          <tr>
+            <th class="table-head">사업장<span style="color:red">*</span></th>
+            <td class="text-left">
+              <el-select v-model="erpDivCode" size="small">
+                <el-option v-for="item in erpDivCodeOptions" :key="item.detailCode" :label="item.detailCodeNameKr" :value="item.detailCode" />
+              </el-select>
+            </td>
+            <th></th>
+            <td></td>
+          </tr>
+          <tr>
+            <th class="table-head">공급사명<span style="color:red">*</span></th>
+            <td class="text-left">{{clientName}}</td>
+            <th class="table-head">계정과목<span style="color:red">*</span></th>
+            <td class="text-left">
+              <el-select v-model="accountSubject" size="small">
+                <el-option v-for="item in accountSubjectOptions" :key="item.detailCode" :label="item.detailCodeNameKr" :value="item.detailCode" />
+              </el-select>
+            </td>
+          </tr>
+          <tr>
+            <th class="table-head">거래구분<span style="color:red">*</span></th>
+            <td class="text-left">
+              <el-select v-model="tradeType" size="small" @change="onHandleTradeType">
+                <el-option v-for="item in tradeTypeOptions" :key="item.detailCode" :label="item.detailCodeNameKr" :value="item.detailCode" />
+              </el-select>
+            </td>
+            <th class="table-head"></th>
+            <td class="text-left"></td>
+          </tr>
+          <tr v-show="bankInfoVisible">
+            <th class="table-head">은행명<span style="color:red">*</span></th>
+            <td class="text-left">
+              <el-input type="text" v-model="intBank.bankName" maxlength="200" size="small" ></el-input>
+            </td>
+            <th class="table-head">은행계좌<span style="color:red">*</span></th>
+            <td class="text-left">
+              <el-input type="text" v-model="intBank.bankAccnt" maxlength="200" size="small" @input="onHandleBankAccnt" ></el-input>
+            </td>
+          </tr>
+          <tr>
+            <th class="table-head">SWIFT CODE</th>
+            <td class="text-left">
+              <el-input size="small" v-model="intBank.swiftCode" maxlength="50" />
+            </td>
+            <th class="table-head">부서<span style="color:red">*</span></th>
+            <td class="text-left"><dept-code size="small" v-model="dept1" ref="dept1"></dept-code></td>
+          </tr>
+          <tr v-show="!isDiffCurrency">
+            <th class="table-head"></th>
+            <td class="text-left"></td>
+            <th class="table-head">지급통화<span style="color:red">*</span></th>
+            <td class="text-left">{{payCurrencyCode}}</td>
+          </tr>
+          <tr v-show="isDiffCurrency">
+            <th class="table-head">송금환율<span style="color:red">*</span></th>
+            <td class="text-left"><fr-input-number size="small" v-model="frnExchangeCost" :canUseZero="true" :controls="false" textAlign="left" :defaultValue="0" @change="onHandlefrnPaymentAmt" /></td>
+            <th class="table-head">지급통화<span style="color:red">*</span></th>
+            <td class="text-left">{{payCurrencyCode}}</td>
+          </tr>
+          <tr v-show="isDiffCurrency">
+            <th class="table-head">송금환율 지급액<span style="color:red">*</span></th>
+            <td class="text-left">{{$n(frnPaymentAmt)}}</td>
+            <th class="table-head"></th>
+            <td class="text-left"></td>
+          </tr>
+          <tr>
+            <th class="table-head">지급액(결정액)<span style="color:red">*</span></th>
+            <td class="text-left">{{$n(paymentAmt)}}</td>
+            <th class="table-head">정산통화<span style="color:red">*</span></th>
+            <td class="text-left">{{standardCurrencyCode}}</td>
+          </tr>
+          <tr>
+            <th class="table-head">업체지급액</th>
+            <td class="text-left">{{$n(supplyPaymentInt)}}</td>
+            <th class="table-head">보상</th>
+            <td class="text-left"><fr-input-number size="small" v-model="correctionAmt" :canUseZero="true" :controls="false" textAlign="left" :defaultValue="0" @change="onHandleCorrectionAmt" /></td>
+          </tr>
+          <tr>
+            <th class="table-head">미지급액</th>
+            <td class="text-left">{{$n(noPaymentAmt)}}</td>
+            <th class="table-head">선지급액</th>
+            <td class="text-left">{{$n(prePaymentAmt)}}</td>
+          </tr>
+          <tr>
+            <th class="table-head">관련품의서</th>
+            <td class="text-left"><draft-no size="small" v-model="relevantDraft" ref="relevantDraft"></draft-no></td>
+            <th/>
+            <td/>
+          </tr>
+          <tr>
+            <th class="table-head">내용<span style="color:red">*</span></th>
+            <td class="text-left">
+              <el-input type="textarea" placeholder="내용" rows="3" v-model="memo" maxlength="400" ></el-input>
+            </td>
+            <th class="table-head">비고</th>
+            <td class="text-left">
+              <el-input type="textarea" placeholder="비고" rows="3" v-model="note" maxlength="400" ></el-input>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:30px">
+      <div class="panel-head row">
+        <div class="col-md-4">
+          <h4>예약 목록 - {{this.$n(bookingInfoListCnt)}} 건</h4>
+        </div>
+        <div class="col-md-0 text-right">
+          <el-row>
+            <fr-downloadbutton :tableRef="this.$refs.bookingInfoList" size="small" :excelSubName="'예약목록'">다운로드</fr-downloadbutton>
+            <calc-cancel-button :domRef="this.$refs.bookingInfoList" :data="bookingInfoList" :isBundle="false" :notiConfirm="true" :calcProcState="calcProcState" @callback="onHandleCancelAndRetrieve" />
+          </el-row>
+        </div>
+      </div>
+      <div style="height: 300px">
+        <fr-table ref="bookingInfoList" :data="bookingInfoList" :height="300" :border="true">
+          <fr-table-column label="선택" prop="isChecked" type="select" :width="50" align="center" fixed />
+          <fr-table-column label="예약번호" prop="bookingCode" :width="120" align="center" fixed />
+          <fr-table-column label="공급사명" prop="clientName" :width="250" align="left" fixed :show-overflow-tooltip="true" />
+          <fr-table-column label="공급사예약번호" prop="sprBookingNo" :width="120" align="center" />
+          <fr-table-column label="유입채널" prop="salesType" align="center" :width="120" :formatter="formatHandler"/>
+          <fr-table-column label="국내해외구분" prop="localeType" align="center" :width="120" :formatter="formatHandler"/>
+          <fr-table-column label="정산통화" prop="standardCurrencyCode" align="center" :width="80"/>
+          <fr-table-column label="정산년월" prop="calcRevenueYearMonth" align="center" :width="100" :formatter="formatHandler" />
+          <fr-table-column label="체크인" prop="checkinDate" :width="100" align="center" type="date" />
+          <fr-table-column label="체크아웃" prop="checkoutDate" :width="100" align="center" type="date" />
+          <fr-table-column label="예약일" prop="bookingReqsDt" :width="100" align="center" type="date" />
+          <fr-table-column label="정산상태" prop="calcProcState" :width="100" align="center" :formatter="formatHandler"/>
+          <fr-table-column label="예약상태" prop="bookingState" :width="100" align="center" :formatter="formatHandler"/>
+          <fr-table-column label="지급유형" prop="invoiceType" align="center" :width="100" :formatter="formatPayReqInvoice"/>
+          <fr-table-column v-if="isDiffCurrency === true" label="지급금액정보" align="center">
+            <fr-table-column label="지급액(결정액)" prop="paymentAmt" align="right" :width="130" type="currency" />
+            <fr-table-column label="업체지급액(외화)" prop="supplyPaymentInt" align="right" :width="130" type="currency" />
+            <fr-table-column label="미지급액" prop="noPaymentAmt" align="right" :width="130" type="currency" />
+            <fr-table-column label="선지급액" prop="prePaymentAmt" align="right" :width="130" type="currency" />
+          </fr-table-column>
+          <fr-table-column v-if="isDiffCurrency === true" label="예약금액정보" align="center">
+            <fr-table-column label="공급원가(외화)" prop="supplyNetInt" align="right" :width="130" type="currency" />
+            <fr-table-column label="추가금액(외화)" prop="addFareInt" align="right" :width="130" type="currency" />
+            <fr-table-column label="마크업(원화)" prop="markupFare" align="right" :width="130" type="currency" />
+            <fr-table-column label="공급컴(원화)" prop="commissionWon" align="right" :width="130" type="currency" />
+            <fr-table-column label="공급컴(외화)" prop="commissionInt" align="right" :width="130" type="currency" />
+          </fr-table-column>
+          <fr-table-column v-if="isDiffCurrency === false" label="지급금액정보" align="center">
+            <fr-table-column label="지급액(결정액)" prop="paymentAmt" align="right" :width="130" type="currency" />
+            <fr-table-column label="업체지급액(원화)" prop="supplyPaymentWon" align="right" :width="130" type="currency" />
+          </fr-table-column>
+          <fr-table-column v-if="isDiffCurrency === false" label="예약금액정보" align="center">
+            <fr-table-column label="공급원가(원화)" prop="supplyNetWon" align="right" :width="130" type="currency" />
+            <fr-table-column label="추가금액(원화)" prop="addFareWon" align="right" :width="130" type="currency" />
+            <fr-table-column label="마크업(원화)" prop="markupFare" align="right" :width="130" type="currency" />
+            <fr-table-column label="공급컴(원화)" prop="commissionWon" align="right" :width="130" type="currency" />
+          </fr-table-column>
+          <fr-table-column label="선지급여부" prop="prePaymentYn" :width="100" align="center" :formatter="formatHandler" />
+        </fr-table>
+      </div>
+    </div>
+    <div slot="footer" class="dialog-footer" style="margin-top:50px;">
+      <fr-button type="C" size="small" v-if="isNoneSave === false" @click="onHandleConfirm">저장</fr-button>
+      <fr-button type="D" size="small" @click="onHandleCancel">닫기</fr-button>
+    </div>
+  </el-dialog>
+
+  <el-dialog :visible.sync="KRWDialogVisible" width="70%" min-height="400" @close="initializeComponent" :close-on-click-modal="false" style="margin-top:-75px">
+    <div class="charge-confirm-info">
+      <div class="panel-head row">
+        <div class="col-md-4">
+          <h4 slot="title">지급요청서 상세</h4>
+        </div>
+      </div>
+      <table class="table-basic">
+        <colgroup>
+          <col style="width:15%;" />
+          <col style="width:35%;" />
+          <col style="width:15%;" />
+          <col style="width:35%;" />
+        </colgroup>
+        <tbody style="text-align:center">
+          <tr>
+            <th class="table-head">사업장<span style="color:red">*</span></th>
+            <td class="text-left">
+              <el-select v-model="erpDivCode" size="small">
+                <el-option v-for="item in erpDivCodeOptions" :key="item.detailCode" :label="item.detailCodeNameKr" :value="item.detailCode" />
+              </el-select>
+            </td>
+            <th></th>
+            <td></td>
+          </tr>
+          <tr>
+            <th class="table-head">공급사명<span style="color:red">*</span></th>
+            <td class="text-left">{{clientName}}</td>
+            <th class="table-head">계정과목<span style="color:red">*</span></th>
+            <td class="text-left">
+              <el-select v-model="accountSubject" size="small">
+                <el-option v-for="item in accountSubjectOptions" :key="item.detailCode" :label="item.detailCodeNameKr" :value="item.detailCode" />
+              </el-select>
+            </td>
+          </tr>
+          <tr>
+            <th class="table-head">거래구분<span style="color:red">*</span></th>
+            <td class="text-left">
+              <el-select v-model="tradeType" size="small" @change="onHandleTradeType">
+                <el-option v-for="item in tradeTypeOptions" :key="item.detailCode" :label="item.detailCodeNameKr" :value="item.detailCode" />
+              </el-select>
+            </td>
+            <th class="table-head"></th>
+            <td class="text-left"></td>
+          </tr>
+          <tr v-show="bankInfoVisible">
+            <th class="table-head">은행명<span style="color:red">*</span></th>
+            <td class="text-left"><dom-bank-code size="small" v-model="domBank" ref="domBank"></dom-bank-code></td>
+            <th class="table-head">은행계좌<span style="color:red">*</span></th>
+            <td class="text-left">
+              <el-input type="text" v-model="domBank.bankAccnt" maxlength="200" size="small" @input="onHandleBankAccnt" ></el-input>
+            </td>
+          </tr>
+          <tr>
+            <th class="table-head">세무구분<span style="color:red">*</span></th>
+            <td class="text-left">
+              <el-select v-model="taxType" size="small" @change="onHandleTaxType">
+                <el-option v-for="item in taxTypeOptions" :key="item.detailCode" :label="item.detailCodeNameKr" :value="item.detailCode" />
+              </el-select>
+            </td>
+            <th class="table-head">계산서일자</th>
+            <th class="text-left">
+              <el-date-picker class="fl" v-model="billDate" :picker-options="pickerOptions" type="date" value-format="yyyy-MM-dd" size="small" v-show="billDateVisible"/>
+            </th>
+          </tr>
+          <tr>
+            <th class="table-head">공급가액<span style="color:red">*</span></th>
+            <td class="text-left"><fr-input-number size="small" v-model="supplyAmt1" :canUseZero="true" :controls="false" textAlign="left" :defaultValue="0" @change="onHandleTotalSupplyAmt" /></td>
+            <th class="table-head">부서<span style="color:red">*</span></th>
+            <td class="text-left">
+              <div>
+                <span style="text-align:left; display:inline-block; width: 77%;">
+                  <dept-code size="small" v-model="dept1" ref="dept1"></dept-code>
+                </span>
+                <span style="text-align:right; display:inline-block; width: 20%;">
+                  <fr-button type="R" @click="onHandleSupplyAmtToggle">{{toggleText}}</fr-button>
+                </span>
+              </div>
+            </td>
+          </tr>
+          <transition name="fade">
+            <tr v-if="toggleText === 'hide'">
+              <th class="table-head">공급가액2</th>
+              <td class="text-left"><fr-input-number size="small" v-model="supplyAmt2" :canUseZero="true" :controls="false" textAlign="left" :defaultValue="0" @change="onHandleTotalSupplyAmt" /></td>
+              <th class="table-head">부서2</th>
+              <td class="text-left"><dept-code size="small" v-model="dept2" ref="dept2"></dept-code></td>
+            </tr>
+          </transition>
+          <transition name="fade">
+            <tr v-if="toggleText === 'hide'">
+              <th class="table-head">공급가액3</th>
+              <td class="text-left"><fr-input-number size="small" v-model="supplyAmt3" :canUseZero="true" :controls="false" textAlign="left" :defaultValue="0" @change="onHandleTotalSupplyAmt" /></td>
+              <th class="table-head">부서3</th>
+              <td class="text-left"><dept-code size="small" v-model="dept3" ref="dept3"></dept-code></td>
+            </tr>
+          </transition>
+          <transition name="fade">
+            <tr v-if="toggleText === 'hide'">
+              <th class="table-head">공급가액4</th>
+              <td class="text-left"><fr-input-number size="small" v-model="supplyAmt4" :canUseZero="true" :controls="false" textAlign="left" :defaultValue="0" @change="onHandleTotalSupplyAmt" /></td>
+              <th class="table-head">부서4</th>
+              <td class="text-left"><dept-code size="small" v-model="dept4" ref="dept4"></dept-code></td>
+            </tr>
+          </transition>
+          <transition name="fade">
+            <tr v-if="toggleText === 'hide'">
+              <th class="table-head">공급가액5</th>
+              <td class="text-left"><fr-input-number size="small" v-model="supplyAmt5" :canUseZero="true" :controls="false" textAlign="left" :defaultValue="0" @change="onHandleTotalSupplyAmt" /></td>
+              <th class="table-head">부서5</th>
+              <td class="text-left"><dept-code size="small" v-model="dept5" ref="dept5"></dept-code></td>
+            </tr>
+          </transition>
+          <transition name="fade">
+            <tr v-if="toggleText === 'hide'">
+              <th class="table-head">공급가액6</th>
+              <td class="text-left"><fr-input-number size="small" v-model="supplyAmt6" :canUseZero="true" :controls="false" textAlign="left" :defaultValue="0" @change="onHandleTotalSupplyAmt" /></td>
+              <th class="table-head">부서6</th>
+              <td class="text-left"><dept-code size="small" v-model="dept6" ref="dept6"></dept-code></td>
+            </tr>
+          </transition>
+          <transition name="fade">
+            <tr v-if="toggleText === 'hide'">
+              <th class="table-head">공급가액7</th>
+              <td class="text-left"><fr-input-number size="small" v-model="supplyAmt7" :canUseZero="true" :controls="false" textAlign="left" :defaultValue="0" @change="onHandleTotalSupplyAmt" /></td>
+              <th class="table-head">부서7</th>
+              <td class="text-left"><dept-code size="small" v-model="dept7" ref="dept7"></dept-code></td>
+            </tr>
+          </transition>
+          <transition name="fade">
+            <tr v-if="toggleText === 'hide'">
+              <th class="table-head">공급가액8</th>
+              <td class="text-left"><fr-input-number size="small" v-model="supplyAmt8" :canUseZero="true" :controls="false" textAlign="left" :defaultValue="0" @change="onHandleTotalSupplyAmt" /></td>
+              <th class="table-head">부서8</th>
+              <td class="text-left"><dept-code size="small" v-model="dept8" ref="dept8"></dept-code></td>
+            </tr>
+          </transition>
+          <tr>
+            <th class="table-head">부가세</th>
+            <td class="text-left"><fr-input-number size="small" v-model="vat" :canUseZero="true" :controls="false" textAlign="left" :defaultValue="0" :disabled="this.taxType !== '1'" @change="onHandleVat" /></td>
+            <th class="table-head"></th>
+            <td class="text-left"></td>
+          </tr>
+          <tr>
+            <th class="table-head">합계</th>
+            <td class="text-left">{{$n(totalSupplyAmt)}} 원</td>
+            <th class="table-head"></th>
+            <td class="text-left"></td>
+          </tr>
+          <tr>
+            <th class="table-head">지급액(결정액)<span style="color:red">*</span></th>
+            <td class="text-left">{{$n(paymentAmt)}} 원<br><span style="font-size: 9px;font-weight: bold;" v-show="isVccCts">(VCC, CTS는 청구서 이용금액 + 보상액이 지급액)</span></td>
+            <th class="table-head">정산통화<span style="color:red">*</span></th>
+            <td class="text-left">{{standardCurrencyCode}}</td>
+          </tr>
+          <tr>
+            <th class="table-head"></th>
+            <td class="text-left"></td>
+            <th class="table-head">지급통화<span style="color:red">*</span></th>
+            <td class="text-left">{{payCurrencyCode}}</td>
+          </tr>
+          <tr>
+            <th class="table-head">업체지급액</th>
+            <td class="text-left">{{$n(supplyPaymentInt)}}</td>
+            <th class="table-head">보상</th>
+            <td class="text-left"><fr-input-number size="small" v-model="correctionAmt" :canUseZero="true" :controls="false" :defaultValue="0" textAlign="left" @change="onHandleCorrectionAmt" /></td>
+          </tr>
+          <tr>
+            <th class="table-head">미지급액</th>
+            <td class="text-left">{{$n(noPaymentAmt)}}</td>
+            <th class="table-head">선지급액</th>
+            <td class="text-left">{{$n(prePaymentAmt)}}</td>
+          </tr>
+          <tr>
+            <th class="table-head">관련품의서</th>
+            <td class="text-left"><draft-no size="small" v-model="relevantDraft" ref="relevantDraft"></draft-no></td>
+            <th class="table-head"></th>
+            <td class="text-left"></td>
+          </tr>
+          <tr>
+            <th class="table-head">내용<span style="color:red">*</span></th>
+            <td class="text-left">
+              <el-input type="textarea" placeholder="내용" rows="3" v-model="memo" maxlength="400" ></el-input>
+            </td>
+            <th class="table-head">비고</th>
+            <td class="text-left">
+              <el-input type="textarea" placeholder="비고" rows="3" v-model="note" maxlength="400" ></el-input>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:30px">
+      <div class="panel-head row">
+        <div class="col-md-4">
+          <h4>예약 목록 - {{this.$n(bookingInfoListCnt)}} 건</h4>
+        </div>
+        <div class="col-md-0 text-right">
+          <el-row>
+            <fr-downloadbutton :tableRef="this.$refs.bookingInfoList" size="small" :excelSubName="'예약목록'">다운로드</fr-downloadbutton>
+            <calc-cancel-button :domRef="this.$refs.bookingInfoList" :data="bookingInfoList" :isBundle="false" :notiConfirm="true" :calcProcState="calcProcState" @callback="onHandleCancelAndRetrieve" />
+          </el-row>
+        </div>
+      </div>
+      <div style="height: 300px">
+        <fr-table ref="bookingInfoList" :data="bookingInfoList" :height="300" :border="true">
+          <fr-table-column label="선택" prop="isChecked" type="select" :width="50" align="center" fixed />
+          <fr-table-column label="예약번호" prop="bookingCode" :width="120" align="center" fixed />
+          <fr-table-column label="공급사명" prop="clientName" :width="250" align="left" fixed :show-overflow-tooltip="true" />
+          <fr-table-column v-if="invoiceType === '93300002'" label="VCC카드번호" prop="vccCardNum" :width="150" align="center" :formatter="formatHandler" />
+          <fr-table-column label="공급사예약번호" prop="sprBookingNo" :width="120" align="center" />
+          <fr-table-column label="유입채널" prop="salesType" align="center" :width="120" :formatter="formatHandler"/>
+          <fr-table-column label="국내해외구분" prop="localeType" align="center" :width="120" :formatter="formatHandler"/>
+          <fr-table-column label="정산통화" prop="standardCurrencyCode" align="center" :width="80"/>
+          <fr-table-column label="정산년월" prop="calcRevenueYearMonth" align="center" :width="100" :formatter="formatHandler" />
+          <fr-table-column label="체크인" prop="checkinDate" :width="100" align="center" type="date" />
+          <fr-table-column label="체크아웃" prop="checkoutDate" :width="100" align="center" type="date" />
+          <fr-table-column label="예약일" prop="bookingReqsDt" :width="100" align="center" type="date" />
+          <fr-table-column label="정산상태" prop="calcProcState" :width="100" align="center" :formatter="formatHandler"/>
+          <fr-table-column label="예약상태" prop="bookingState" :width="100" align="center" :formatter="formatHandler"/>
+          <fr-table-column label="지급유형" prop="invoiceType" align="center" :width="100" :formatter="formatPayReqInvoice"/>
+          <fr-table-column v-if="category !== '93900003'" label="지급정보" align="center">
+            <fr-table-column label="지급액(결정액)" prop="paymentAmt" align="right" :width="130" type="currency" />
+            <fr-table-column label="업체지급액(외화)" prop="supplyPaymentInt" align="right" :width="130" type="currency" />
+            <fr-table-column label="미지급액" prop="noPaymentAmt" align="right" :width="130" type="currency" />
+            <fr-table-column label="선지급액" prop="prePaymentAmt" align="right" :width="130" type="currency" />
+          </fr-table-column>
+          <fr-table-column v-if="category !== '93900003'" label="예약금액정보" align="center">
+            <fr-table-column label="청구금액" prop="chargeAmt" align="right" :width="130" type="currency" />
+            <fr-table-column label="이용금액" prop="chargeAmtWon" align="right" :width="130" type="currency" />
+            <fr-table-column label="공급원가(외화)" prop="supplyNetInt" align="right" :width="130" type="currency" />
+            <fr-table-column label="추가금액(외화)" prop="addFareInt" align="right" :width="130" type="currency" />
+            <fr-table-column label="마크업(원화)" prop="markupFare" align="right" :width="130" type="currency" />
+            <fr-table-column label="공급컴(원화)" prop="commissionWon" align="right" :width="130" type="currency" />
+            <fr-table-column label="공급컴(외화)" prop="commissionInt" align="right" :width="130" type="currency" />
+          </fr-table-column>
+          <fr-table-column v-if="category !== '93900003'" label="선지급여부" prop="prePaymentYn" :width="100" align="center" :formatter="formatHandler" />
+          <fr-table-column v-if="category === '93900003'" label="지급정보" align="center">
+            <fr-table-column label="지급액(결정액)" prop="paymentAmt" align="right" :width="130" type="currency" />
+            <fr-table-column label="적립마일리지" prop="skypassMileage" align="right" :width="130" type="currency" />
+            <fr-table-column label="정산단가" prop="skypassCalcCost" align="right" :width="130" type="currency" />
+          </fr-table-column>
+        </fr-table>
+      </div>
+    </div>
+    <div slot="footer" class="dialog-footer" style="margin-top:50px;">
+      <fr-button type="C" size="small" v-if="isNoneSave === false" @click="onHandleConfirm">저장</fr-button>
+      <fr-button type="D" size="small" @click="onHandleCancel">닫기</fr-button>
+    </div>
+  </el-dialog>
+</div>
+</template>
+
+<script>
+import { commonCodeServiceMixin } from '@/mixins/commonCodeServiceMixin';
+import { actionServiceMixin } from '@/mixins/actionServiceMixin';
+import store from '@/store';
+import BigNumber from 'bignumber.js';
+
+export default {
+  name: 'payRequestPopup',
+  mixins: [commonCodeServiceMixin, actionServiceMixin],
+  props: {
+    callbackFunc: {
+      type: Function
+    }
+  },
+  data() {
+    return {
+      notKRWDialogVisible: false,
+      KRWDialogVisible: false,
+      billDateVisible: false,
+      bankInfoVisible: false,
+      isVccCts: false,
+      isDiffCurrency: false,
+      isNoneSave: false,
+      bookingInfoList: [],
+      bookingInfoListCnt: 0,
+      itemInfo: null,
+      clientName: '',
+      clientCode: '',
+      erpDivCode: '100',
+      accountSubject: '', // 계정과목
+      standardCurrencyCode: '',
+      paymentAmt: 0,
+      frnExchangeCost: 0,
+      payCurrencyCode: '',
+      frnPaymentAmt: 0,
+      originPaymentAmt: 0, // 원본 지급액
+      memo: '', // 내용
+      note: '',
+      billDate: '', // 계산서 일자
+      taxType: '', // 세무구분
+      supplyAmt1: 0,
+      supplyAmt2: 0,
+      supplyAmt3: 0,
+      supplyAmt4: 0,
+      supplyAmt5: 0,
+      supplyAmt6: 0,
+      supplyAmt7: 0,
+      supplyAmt8: 0,
+      totalSupplyAmt: 0,
+      dept1: {
+        deptCode: '',
+        deptName: ''
+      },
+      dept2: {
+        deptCode: '',
+        deptName: ''
+      },
+      dept3: {
+        deptCode: '',
+        deptName: ''
+      },
+      dept4: {
+        deptCode: '',
+        deptName: ''
+      },
+      dept5: {
+        deptCode: '',
+        deptName: ''
+      },
+      dept6: {
+        deptCode: '',
+        deptName: ''
+      },
+      dept7: {
+        deptCode: '',
+        deptName: ''
+      },
+      dept8: {
+        deptCode: '',
+        deptName: ''
+      },
+      relevantDraft: {
+        draftNo: '',
+        draftKey: '',
+        title: ''
+      },
+      supplyPaymentInt: 0,
+      correctionAmt: 0,
+      noPaymentAmt: 0,
+      prePaymentAmt: 0,
+      vat: 0,
+      toggleText: 'open',
+      calcProcState: '',
+      domBank: {
+        bankCode: '',
+        bankName: '',
+        disPlayBankName: '',
+        bankAccnt: '',
+        bankDepositors: null
+      },
+      intBank: {
+        bankCode: '',
+        bankName: '',
+        bankAccnt: '',
+        swiftCode: '',
+        bankDepositors: null,
+        bankAddress: null,
+        bankBranchName: null,
+        bankNationCode: null,
+        bankNationName: null,
+        bankTelNo: null
+      },
+      pickerOptions: {
+        disabledDate(time) {
+          // 지난달까지만 선택가능
+          let date = new Date();
+          let firstDayOfLastMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+          return time.getTime() < firstDayOfLastMonth;
+        }
+        // shortcuts: [{
+        //   text: 'Today',
+        //   onClick(picker) {
+        //     picker.$emit('pick', new Date());
+        //   }
+        // }, {
+        //   text: 'Yesterday',
+        //   onClick(picker) {
+        //     const date = new Date();
+        //     date.setTime(date.getTime() - 3600 * 1000 * 24);
+        //     picker.$emit('pick', date);
+        //   }
+        // }, {
+        //   text: 'A week ago',
+        //   onClick(picker) {
+        //     const date = new Date();
+        //     date.setTime(date.getTime() - 3600 * 1000 * 24 * 7);
+        //     picker.$emit('pick', date);
+        //   }
+        // }]
+      },
+      category: null,
+      tradeType: null
+      // sprPayTempDetail: null
+    };
+  },
+  created() {
+    this.initializeComponent();
+  },
+  mounted() {
+
+  },
+  watch: {
+    domBank(val) {
+      this.onHandleBankAccnt(val.bankAccnt);
+    },
+    intBank(val) {
+      this.onHandleBankAccnt(val.bankAccnt);
+    }
+  },
+  methods: {
+    initializeComponent() {
+      this.itemInfo = null;
+      // this.sprPayTempDetail = null;
+      this.bookingInfoList = [];
+      this.bookingInfoListCnt = 0;
+      this.clientName = '';
+      this.clientCode = '';
+      this.erpDivCode = '100';
+      this.erpDivCodeOptions = [{detailCode: '100', detailCodeNameKr: 'TIDESQUARE'}, {detailCode: '130', detailCodeNameKr: '(주)타이드스퀘어 투어비스'}];
+      this.accountSubjectOptions = [{detailCode: '1111701', detailCodeNameKr: '선급금(일반)'}, {detailCode: '8110000', detailCodeNameKr: '지급수수료'}, {detailCode: '8110690', detailCodeNameKr: '판매수수료'}];
+      this.taxTypeOptions = [{detailCode: '1', detailCodeNameKr: '세금계산서'}, {detailCode: '3', detailCodeNameKr: '기타'}];
+      this.tradeTypeOptions = [{detailCode: null, detailCodeNameKr: '미선택'}, {detailCode: 'Auto', detailCodeNameKr: '자동이체'}];
+      this.accountSubject = '1111701';
+      this.relevantDraft = {
+        draftNo: '',
+        draftKey: '',
+        title: ''
+      };
+      this.standardCurrencyCode = '';
+      this.paymentAmt = 0;
+      this.frnExchangeCost = 0;
+      this.payCurrencyCode = '';
+      this.frnPaymentAmt = 0;
+      this.originPaymentAmt = 0;
+      this.memo = '';
+      this.note = '';
+      this.billDate = '';
+      this.taxType = '3';
+      this.billDateVisible = this.taxType === '1';
+      this.tradeType = null;
+      this.bankInfoVisible = this.tradeType === null;
+      this.supplyAmt1 = 0;
+      this.supplyAmt2 = 0;
+      this.supplyAmt3 = 0;
+      this.supplyAmt4 = 0;
+      this.supplyAmt5 = 0;
+      this.supplyAmt6 = 0;
+      this.supplyAmt7 = 0;
+      this.supplyAmt8 = 0;
+      this.totalSupplyAmt = 0;
+      this.dept1 = {
+        deptCode: '',
+        deptName: ''
+      };
+      this.dept2 = {
+        deptCode: '',
+        deptName: ''
+      };
+      this.dept3 = {
+        deptCode: '',
+        deptName: ''
+      };
+      this.dept4 = {
+        deptCode: '',
+        deptName: ''
+      };
+      this.dept5 = {
+        deptCode: '',
+        deptName: ''
+      };
+      this.dept6 = {
+        deptCode: '',
+        deptName: ''
+      };
+      this.dept7 = {
+        deptCode: '',
+        deptName: ''
+      };
+      this.dept8 = {
+        deptCode: '',
+        deptName: ''
+      };
+      this.domBank = {
+        bankCode: '',
+        bankName: '',
+        disPlayBankName: '',
+        bankAccnt: '',
+        bankDepositors: null
+      };
+      this.intBank = {
+        bankCode: '',
+        bankName: '',
+        bankAccnt: '',
+        swiftCode: '',
+        bankDepositors: null,
+        bankAddress: null,
+        bankBranchName: null,
+        bankNationCode: null,
+        bankNationName: null,
+        bankTelNo: null
+      };
+      this.supplyPaymentInt = 0;
+      this.correctionAmt = 0;
+      this.noPaymentAmt = 0;
+      this.prePaymentAmt = 0;
+      this.vat = 0;
+      this.toggleText = 'open';
+      this.calcProcState = '';
+      this.category = null;
+      this.invoiceType = null;
+    },
+    async getSprPayTempDetail(groupKey) {
+      const payload = await this.httpGetAsync(`/api/sr/sprPayTempDetail/${groupKey}`);
+      this.sprPayTempDetail = payload.data;
+    },
+    handleVisible(item) { // 팝업시 기본 로딩
+      if (this.isEmpty(item) ) {
+        messageBox.show('', '데이터가 없습니다.');
+        return;
+      }
+
+      // 원본 저장
+      // if (this.isEmpty(item.originItemInfo)) {
+      //   const originItemInfo = this.cloneObject(item);
+      //   item.originItemInfo = originItemInfo;
+      // }
+
+      // 저장된 작성정보 불러오기
+      // await this.getSprPayTempDetail(item.groupKey);
+      // if (!this.isEmpty(this.sprPayTempDetail)) {
+      //   Object.assign(item, this.sprPayTempDetail);
+      // }
+
+      this.itemInfo = item;
+      this.category = this.itemInfo.category;
+      this.invoiceType = this.itemInfo.invoiceType;
+
+      if (this.itemInfo.invoiceType === '93300002' || this.itemInfo.invoiceType === '93300003') {
+        this.isVccCts = true;
+      } else {
+        this.isVccCts = false;
+      }
+
+      if (this.itemInfo.clientCode === 'B000000418' || this.itemInfo.clientCode === 'A000004518') {
+        this.isDiffCurrency = true;
+      } else {
+        this.isDiffCurrency = false;
+      }
+
+      // 정산상태가 지급요청대기 일경우만 저장
+      if (this.itemInfo.calcProcState === '93000003') {
+        this.isNoneSave = false;
+      } else {
+        this.isNoneSave = true;
+      }
+
+      // 오픈 팝업 설정
+      if (this.itemInfo.payCurrencyCode === 'KRW') {
+        this.notKRWDialogVisible = false;
+        this.KRWDialogVisible = true;
+      } else {
+        this.notKRWDialogVisible = true;
+        this.KRWDialogVisible = false;
+      }
+
+      if (this.isDiffCurrency) {
+        if (!this.isEmpty(this.itemInfo.frnExchangeCost)) {
+          this.frnExchangeCost = this.itemInfo.frnExchangeCost;
+        }
+
+        if (!this.isEmpty(this.itemInfo.frnPaymentAmt)) {
+          this.frnPaymentAmt = this.itemInfo.frnPaymentAmt;
+        }
+      }
+
+      // 사업장
+      if (!this.isEmpty(this.itemInfo.erpDivCode)) {
+        this.erpDivCode = this.itemInfo.erpDivCode;
+      }
+
+      this.correctionAmt = 0;
+
+      // 거래처명
+      if (this.isEmpty(this.itemInfo.clientCode)) {
+        this.clientName = '공급사 코드 미할당';
+      } else {
+        this.clientCode = this.itemInfo.clientCode;
+        this.clientName = `[${this.itemInfo.clientCode}] ${this.itemInfo.clientName}`;
+      }
+
+      // 거래구분
+      if (!this.isEmpty(this.itemInfo.tradeType)) {
+        this.tradeType = this.itemInfo.tradeType;
+      } else {
+        if (this.itemInfo.hasDetailSave === false && this.isVccCts === true) {
+          this.tradeType = 'Auto';
+        }
+      }
+      this.onHandleTradeType();
+
+      this.domBank = {
+        bankCode: this.isEmpty(this.itemInfo.bankCode) ? '' : this.itemInfo.bankCode,
+        bankName: this.isEmpty(this.itemInfo.bankName) ? '' : this.itemInfo.bankName,
+        disPlayBankName: this.isEmpty(this.itemInfo.bankName) ? '' : `[${this.itemInfo.bankCode}] ${this.itemInfo.bankName}`,
+        bankAccnt: this.isEmpty(this.itemInfo.bankAccnt) ? '' : this.itemInfo.bankAccnt,
+        bankDepositors: this.isEmpty(this.itemInfo.bankDepositors) ? null : this.itemInfo.bankDepositors
+      };
+
+      this.intBank = {
+        bankCode: this.isEmpty(this.itemInfo.frnBankCode) ? '' : this.itemInfo.frnBankCode,
+        bankName: this.isEmpty(this.itemInfo.frnBankName) ? '' : this.itemInfo.frnBankName,
+        bankAccnt: this.isEmpty(this.itemInfo.frnBankAccnt) ? '' : this.itemInfo.frnBankAccnt,
+        swiftCode: this.isEmpty(this.itemInfo.swiftCode) ? '' : this.itemInfo.swiftCode,
+        bankDepositors: this.isEmpty(this.itemInfo.frnBankDepositors) ? null : this.itemInfo.frnBankDepositors,
+        bankAddress: this.isEmpty(this.itemInfo.frnBankAddress) ? null : this.itemInfo.frnBankAddress,
+        bankBranchName: this.isEmpty(this.itemInfo.frnBankBranchName) ? null : this.itemInfo.frnBankBranchName,
+        bankNationCode: this.isEmpty(this.itemInfo.frnBankNationCode) ? null : this.itemInfo.frnBankNationCode,
+        bankNationName: this.isEmpty(this.itemInfo.frnBankNationName) ? null : this.itemInfo.frnBankNationName,
+        bankTelNo: this.isEmpty(this.itemInfo.frnBankTelNo) ? null : this.itemInfo.frnBankTelNo
+      };
+
+      // if (!this.isEmpty(this.itemInfo.swiftCode)) {
+      //   this.intswiftCode = this.itemInfo.swiftCode;
+      // }
+
+      // 계정과목
+      if (!this.isEmpty(this.itemInfo.accountSubject)) {
+        this.accountSubject = this.itemInfo.accountSubject;
+      }
+
+      if (!this.isEmpty(this.itemInfo.relevantDraftNo)) {
+        this.relevantDraft = {
+          draftNo: this.itemInfo.relevantDraftNo,
+          draftKey: this.itemInfo.relevantDraftKey,
+          title: this.itemInfo.relevantDraftTitle
+        };
+      }
+
+      if (!this.isEmpty(this.itemInfo.payCurrencyCode)) {
+        this.payCurrencyCode = this.itemInfo.payCurrencyCode;
+      }
+
+      if (!this.isEmpty(this.itemInfo.standardCurrencyCode)) {
+        this.standardCurrencyCode = this.itemInfo.standardCurrencyCode;
+      }
+
+      if (!this.isEmpty(this.itemInfo.paymentAmt)) {
+        this.paymentAmt = this.itemInfo.paymentAmt;
+      }
+
+      if (!this.isEmpty(this.itemInfo.originPaymentAmt)) {
+        this.originPaymentAmt = this.itemInfo.originPaymentAmt;
+      } else {
+        this.originPaymentAmt = this.itemInfo.paymentAmt;
+      }
+
+      if (!this.isEmpty(this.itemInfo.memo)) {
+        this.memo = this.itemInfo.memo;
+      } else {
+        const salesTypeItem = this.$store.getters.commonCode['salesType'].findValue((x) => x.detailCode, this.itemInfo.salesType);
+        let salesTypeName = '';
+        if (salesTypeItem && salesTypeItem.detailCodeNameKr) {
+          salesTypeName = salesTypeItem.detailCodeNameKr;
+        }
+
+        const month = this.itemInfo.calcRevenueYearMonth.substring(4, 6);
+        if (this.category === '93900002') {
+          if (this.clientCode === 'A000003834') { // 더비
+            const cnt = new BigNumber(this.itemInfo.bookingReqCnt).minus(new BigNumber(this.itemInfo.bookingCancelReqCnt)).toNumber();
+            this.memo = `${this.itemInfo.clientName} ${this.isEmpty(salesTypeName) ? '' : salesTypeName + ' '}${month}월 수수료 정산\n예약요청 ${this.$n(this.itemInfo.bookingReqCnt)}건, 취소요청 ${this.$n(this.itemInfo.bookingCancelReqCnt)}건 ${cnt < 2500 ? `\n미달 수수료 $${this.$n(2500 - cnt)} 지급` : ''}`;
+          } else if (this.clientCode === 'A000004485') { // 사이트마인더
+            this.memo = `${this.itemInfo.clientName} ${this.isEmpty(salesTypeName) ? '' : salesTypeName + ' '}${month}월 수수료 정산`;
+          } else if (this.clientCode === 'A000004518') {
+            this.memo = `${this.itemInfo.clientName} ${this.isEmpty(salesTypeName) ? '' : salesTypeName + ' '}${month}월 체크아웃 기준 예약수수료`;
+          } else {
+            this.memo = `${this.itemInfo.clientName} ${this.isEmpty(salesTypeName) ? '' : salesTypeName + ' '}${month}월 수수료 정산`;
+          }
+        } else if (this.category === '93900003') {
+          this.memo = `${this.itemInfo.clientName} SKYPASS ${this.isEmpty(salesTypeName) ? '' : salesTypeName + ' '}${month}월 정산`;
+        } else if (this.category === '93900001' && this.invoiceType === '93300002' && !this.isEmpty(this.itemInfo.vccCardNum)) {
+          const vccCardNm = this.getVccCardNm(this.itemInfo.vccCardNum);
+          this.memo = `${vccCardNm} ${this.isEmpty(salesTypeName) ? '' : salesTypeName + ' '}${month}월 정산`;
+        } else {
+          this.memo = `${this.itemInfo.clientName} ${this.isEmpty(salesTypeName) ? '' : salesTypeName + ' '}${month}월 정산`;
+        }
+      }
+
+      if (!this.isEmpty(this.itemInfo.note)) {
+        this.note = this.itemInfo.note;
+      } else {
+        if (this.clientCode === 'A000003834') { // 더비
+          const cnt = new BigNumber(this.itemInfo.bookingReqCnt).minus(new BigNumber(this.itemInfo.bookingCancelReqCnt)).toNumber();
+          this.note = `${cnt < 2500 ? `미달 건수 ${this.$n(2500 - cnt)}건\n건당 1불 수수료 발생` : ''}`;
+        } else if (this.category === '93900002' && this.clientCode === 'A000004518') {
+          this.note = '예약건별 1% 수수료 발생';
+        } else if (this.category === '93900003') {
+          this.note = `정산단가 ${this.itemInfo.skypassCalcCost} 원`;
+        }
+      }
+
+      if (!this.isEmpty(this.itemInfo.supplyPaymentInt)) {
+        this.supplyPaymentInt = this.itemInfo.supplyPaymentInt;
+      }
+
+      if (!this.isEmpty(this.itemInfo.correctionAmt)) {
+        this.correctionAmt = this.itemInfo.correctionAmt;
+      }
+
+      if (!this.isEmpty(this.itemInfo.noPaymentAmt)) {
+        this.noPaymentAmt = this.itemInfo.noPaymentAmt;
+      }
+
+      if (!this.isEmpty(this.itemInfo.prePaymentAmt)) {
+        this.prePaymentAmt = this.itemInfo.prePaymentAmt;
+      }
+
+      if (!this.isEmpty(this.itemInfo.deptCode1)) {
+        this.dept1 = {
+          deptCode: this.itemInfo.deptCode1,
+          deptName: this.itemInfo.deptName1
+        };
+      } else {
+        this.dept1 = {
+          deptCode: `${this.$store.getters.userInfo.deptCode}`,
+          deptName: `${this.$store.getters.userInfo.deptName}`
+        };
+      }
+
+      // 원화일 경우
+      if (this.KRWDialogVisible) {
+        let isToggleOpen = false;
+
+        if (!this.isEmpty(this.itemInfo.taxType)) {
+          this.taxType = this.itemInfo.taxType;
+          if (this.taxType === '1') {
+            this.billDateVisible = true;
+          } else {
+            this.billDateVisible = false;
+          }
+        }
+
+        if (this.taxType === '1' && !this.isEmpty(this.itemInfo.billDate)) {
+          this.billDate = this.itemInfo.billDate;
+        }
+
+        if (!this.isEmpty(this.itemInfo.supplyAmt1)) {
+          this.supplyAmt1 = this.itemInfo.supplyAmt1;
+        } else {
+          this.supplyAmt1 = this.itemInfo.paymentAmt;
+        }
+
+        if (this.supplyAmt1 === this.itemInfo.paymentAmt) {
+          this.supplyAmt2 = 0;
+          this.supplyAmt3 = 0;
+          this.supplyAmt4 = 0;
+          this.supplyAmt5 = 0;
+          this.supplyAmt6 = 0;
+          this.supplyAmt7 = 0;
+          this.supplyAmt8 = 0;
+          this.dept2 = {
+            deptCode: '',
+            deptName: ''
+          };
+          this.dept3 = {
+            deptCode: '',
+            deptName: ''
+          };
+          this.dept4 = {
+            deptCode: '',
+            deptName: ''
+          };
+          this.dept5 = {
+            deptCode: '',
+            deptName: ''
+          };
+          this.dept6 = {
+            deptCode: '',
+            deptName: ''
+          };
+          this.dept7 = {
+            deptCode: '',
+            deptName: ''
+          };
+          this.dept8 = {
+            deptCode: '',
+            deptName: ''
+          };
+        } else {
+          if (!this.isEmpty(this.itemInfo.supplyAmt2) && this.itemInfo.supplyAmt2 !== 0) {
+            this.supplyAmt2 = this.itemInfo.supplyAmt2;
+            isToggleOpen = true;
+          }
+          if (!this.isEmpty(this.itemInfo.supplyAmt3) && this.itemInfo.supplyAmt3 !== 0) {
+            this.supplyAmt3 = this.itemInfo.supplyAmt3;
+            isToggleOpen = true;
+          }
+          if (!this.isEmpty(this.itemInfo.supplyAmt4) && this.itemInfo.supplyAmt4 !== 0) {
+            this.supplyAmt4 = this.itemInfo.supplyAmt4;
+            isToggleOpen = true;
+          }
+          if (!this.isEmpty(this.itemInfo.supplyAmt5) && this.itemInfo.supplyAmt5 !== 0) {
+            this.supplyAmt5 = this.itemInfo.supplyAmt5;
+            isToggleOpen = true;
+          }
+          if (!this.isEmpty(this.itemInfo.supplyAmt6) && this.itemInfo.supplyAmt6 !== 0) {
+            this.supplyAmt6 = this.itemInfo.supplyAmt6;
+            isToggleOpen = true;
+          }
+          if (!this.isEmpty(this.itemInfo.supplyAmt7) && this.itemInfo.supplyAmt7 !== 0) {
+            this.supplyAmt7 = this.itemInfo.supplyAmt7;
+            isToggleOpen = true;
+          }
+          if (!this.isEmpty(this.itemInfo.supplyAmt8) && this.itemInfo.supplyAmt8 !== 0) {
+            this.supplyAmt8 = this.itemInfo.supplyAmt8;
+            isToggleOpen = true;
+          }
+          if (!this.isEmpty(this.itemInfo.deptCode2)) {
+            this.dept2 = {
+              deptCode: this.itemInfo.deptCode2,
+              deptName: this.itemInfo.deptName2
+            };
+            isToggleOpen = true;
+          }
+          if (!this.isEmpty(this.itemInfo.deptCode3)) {
+            this.dept3 = {
+              deptCode: this.itemInfo.deptCode3,
+              deptName: this.itemInfo.deptName3
+            };
+            isToggleOpen = true;
+          }
+          if (!this.isEmpty(this.itemInfo.deptCode4)) {
+            this.dept4 = {
+              deptCode: this.itemInfo.deptCode4,
+              deptName: this.itemInfo.deptName4
+            };
+            isToggleOpen = true;
+          }
+          if (!this.isEmpty(this.itemInfo.deptCode5)) {
+            this.dept5 = {
+              deptCode: this.itemInfo.deptCode5,
+              deptName: this.itemInfo.deptName5
+            };
+            isToggleOpen = true;
+          }
+          if (!this.isEmpty(this.itemInfo.deptCode6)) {
+            this.dept6 = {
+              deptCode: this.itemInfo.deptCode6,
+              deptName: this.itemInfo.deptName6
+            };
+            isToggleOpen = true;
+          }
+          if (!this.isEmpty(this.itemInfo.deptCode7)) {
+            this.dept7 = {
+              deptCode: this.itemInfo.deptCode7,
+              deptName: this.itemInfo.deptName7
+            };
+            isToggleOpen = true;
+          }
+          if (!this.isEmpty(this.itemInfo.deptCode8)) {
+            this.dept8 = {
+              deptCode: this.itemInfo.deptCode8,
+              deptName: this.itemInfo.deptName8
+            };
+            isToggleOpen = true;
+          }
+        }
+
+        if (isToggleOpen) {
+          this.onHandleSupplyAmtToggle();
+        }
+
+        if (!this.isEmpty(this.itemInfo.vat)) {
+          this.vat = this.itemInfo.vat;
+        }
+
+        this.onHandleVat();
+      }
+
+      // 부서정보 데이터 세팅
+      this.setDept();
+
+      // 국내 은행정보 세팅
+      this.setDomBank();
+
+      // 관련품의서 데이터 세팅
+      this.setRelevantDraft();
+
+      this.$nextTick(() => {
+        if (!this.isEmpty(this.itemInfo.bookingInfoList)) {
+          const _bookingInfoList = this.cloneObject(this.itemInfo.bookingInfoList);
+
+          _bookingInfoList.forEach(data => {
+            data.isChecked = false;
+            if (this.isEmpty(data.clientCode)) {
+              data.clientName = '공급사 코드 미할당';
+            } else {
+              data.clientName = `[${data.clientCode}] ${data.clientName}`;
+            }
+          });
+
+          this.bookingInfoList = _bookingInfoList;
+          this.bookingInfoListCnt = this.bookingInfoList.length;
+          this.calcProcState = this.itemInfo.calcProcState;
+        }
+      });
+    },
+    async onHandleConfirm() {
+      const writeInfo = {
+        erpDivCode: this.erpDivCode,
+        accountSubject: this.accountSubject,
+        relevantDraftNo: this.relevantDraft.draftNo,
+        relevantDraftKey: this.relevantDraft.draftKey,
+        relevantDraftTitle: this.relevantDraft.title,
+        memo: this.memo,
+        note: this.note,
+        billDate: this.billDate,
+        taxType: this.taxType,
+        supplyAmt1: this.supplyAmt1,
+        supplyAmt2: this.supplyAmt2,
+        supplyAmt3: this.supplyAmt3,
+        supplyAmt4: this.supplyAmt4,
+        supplyAmt5: this.supplyAmt5,
+        supplyAmt6: this.supplyAmt6,
+        supplyAmt7: this.supplyAmt7,
+        supplyAmt8: this.supplyAmt8,
+        vat: this.vat,
+        deptCode1: this.dept1.deptCode,
+        deptName1: this.dept1.deptName,
+        deptCode2: this.dept2.deptCode,
+        deptName2: this.dept2.deptName,
+        deptCode3: this.dept3.deptCode,
+        deptName3: this.dept3.deptName,
+        deptCode4: this.dept4.deptCode,
+        deptName4: this.dept4.deptName,
+        deptCode5: this.dept5.deptCode,
+        deptName5: this.dept5.deptName,
+        deptCode6: this.dept6.deptCode,
+        deptName6: this.dept6.deptName,
+        deptCode7: this.dept7.deptCode,
+        deptName7: this.dept7.deptName,
+        deptCode8: this.dept8.deptCode,
+        deptName8: this.dept8.deptName,
+        frnExchangeCost: this.frnExchangeCost,
+        frnPaymentAmt: this.frnPaymentAmt,
+        paymentAmt: this.paymentAmt,
+        originPaymentAmt: this.originPaymentAmt,
+        correctionAmt: this.correctionAmt,
+        bankCode: this.domBank.bankCode,
+        bankName: this.domBank.bankName,
+        bankAccnt: this.domBank.bankAccnt,
+        swiftCode: this.intBank.swiftCode,
+        frnBankCode: this.intBank.bankCode,
+        frnBankName: this.intBank.bankName,
+        frnBankAccnt: this.intBank.bankAccnt,
+        tradeType: this.isEmpty(this.tradeType) ? null : this.tradeType
+      };
+
+      if (this.validateConfirm()) {
+        Object.assign(this.itemInfo, writeInfo);
+
+        await this.payRequestTempSave(Object.assign(writeInfo, {
+          groupKey: this.itemInfo.groupKey,
+          category: this.itemInfo.category
+        }));
+
+        this.itemInfo.hasDetailSave = true;
+        this.onHandleCancel();
+      }
+    },
+    onHandleCancel() {
+      if (this.notKRWDialogVisible) {
+        this.notKRWDialogVisible = false;
+      }
+      if (this.KRWDialogVisible) {
+        this.KRWDialogVisible = false;
+      }
+    },
+    onHandleCancelAndRetrieve() {
+      this.onHandleCancel();
+      this.callbackFunc();
+    },
+    validateConfirm() {
+      if (this.isEmpty(this.erpDivCode) ) {
+        messageBox.show('', '사업장이 선택되지 않았습니다. ');
+        return false;
+      }
+
+      if (this.isEmpty(this.itemInfo.clientCode) ) {
+        messageBox.show('', '공급사 코드 미할당된 항목은 저장 할 수 없습니다. ');
+        return false;
+      }
+
+      if (this.isDiffCurrency && this.frnExchangeCost === 0) {
+        messageBox.show('', '정산통화와 지급통화가 다른 공급사의 경우 송금환율 입력이 필수 입니다.');
+        return;
+      }
+
+      if (this.isDiffCurrency && this.frnPaymentAmt === 0) {
+        messageBox.show('', 'FitRuums 공급사의 경우 FitRuums 지급액이 0원 일 경우 지급요청 할 수 없습니다.');
+        return;
+      }
+
+      if (this.isEmpty(this.accountSubject) ) {
+        messageBox.show('', '계정과목을 선택해 주세요.');
+        return false;
+      }
+
+      if (this.isEmpty(this.memo) ) {
+        messageBox.show('', '내용을 입력해 주세요.');
+        return false;
+      }
+
+      if (this.paymentAmt === 0) {
+        messageBox.show('', '지급액(결정액)이 0원은 지급요청을 할 수 없습니다.');
+        return false;
+      }
+
+      if (this.isEmpty(this.dept1.deptCode)) {
+        messageBox.show('', '부서를 선택해주세요.');
+        return false;
+      }
+
+      if (this.KRWDialogVisible) {
+        // 원화
+        if (this.totalSupplyAmt !== this.paymentAmt) {
+          messageBox.show('', '합계가 지급액(결정액)과 일치하지 않습니다.');
+          return false;
+        }
+        if (!this.isEmpty(this.supplyAmt2) && this.supplyAmt2 !== 0 && this.isEmpty(this.dept2.deptCode)) {
+          messageBox.show('', '부서2를 선택해주세요.');
+          return false;
+        }
+        if (!this.isEmpty(this.supplyAmt3) && this.supplyAmt3 !== 0 && this.isEmpty(this.dept3.deptCode)) {
+          messageBox.show('', '부서3를 선택해주세요.');
+          return false;
+        }
+        if (!this.isEmpty(this.supplyAmt4) && this.supplyAmt4 !== 0 && this.isEmpty(this.dept4.deptCode)) {
+          messageBox.show('', '부서4를 선택해주세요.');
+          return false;
+        }
+        if (!this.isEmpty(this.supplyAmt5) && this.supplyAmt5 !== 0 && this.isEmpty(this.dept5.deptCode)) {
+          messageBox.show('', '부서5를 선택해주세요.');
+          return false;
+        }
+        if (!this.isEmpty(this.supplyAmt6) && this.supplyAmt6 !== 0 && this.isEmpty(this.dept6.deptCode)) {
+          messageBox.show('', '부서6를 선택해주세요.');
+          return false;
+        }
+        if (!this.isEmpty(this.supplyAmt7) && this.supplyAmt7 !== 0 && this.isEmpty(this.dept7.deptCode)) {
+          messageBox.show('', '부서7를 선택해주세요.');
+          return false;
+        }
+        if (!this.isEmpty(this.supplyAmt8) && this.supplyAmt8 !== 0 && this.isEmpty(this.dept8.deptCode)) {
+          messageBox.show('', '부서8를 선택해주세요.');
+          return false;
+        }
+        if (this.isEmpty(this.taxType)) {
+          messageBox.show('', '세무구분을 선택해주세요.');
+          return false;
+        }
+        if (this.taxType === '1' && this.isEmpty(this.billDate)) {
+          messageBox.show('', '계산서일자를 선택해주세요.');
+          return false;
+        }
+        if (this.bankInfoVisible && this.isEmpty(this.domBank.bankCode)) {
+          messageBox.show('', '은행명을 선택해 주세요.');
+          return false;
+        }
+        if (this.bankInfoVisible && this.isEmpty(this.domBank.bankAccnt)) {
+          messageBox.show('', '은행계좌를 입력해 주세요.');
+          return false;
+        }
+      }
+
+      return true;
+    },
+    onHandleTaxType() {
+      if (this.taxType === '1') {
+        this.billDateVisible = true;
+        this.onHandleTotalSupplyAmt();
+      } else {
+        this.billDateVisible = false;
+        this.vat = 0;
+        this.onHandleVat();
+      }
+    },
+    onHandleTradeType() {
+      if (this.tradeType === 'Auto') {
+        this.bankInfoVisible = false;
+        this.note = '[자동이체]';
+      } else {
+        this.bankInfoVisible = true;
+        this.note = '';
+      }
+    },
+    onHandleSupplyAmtToggle() {
+      if (this.toggleText === 'open') {
+        this.toggleText = 'hide';
+      } else {
+        this.toggleText = 'open';
+      }
+    },
+    onHandleTotalSupplyAmt() {
+      try {
+        this.supplyAmt1 = ((this.isEmpty(this.supplyAmt1) || isNaN(this.supplyAmt1)) ? 0 : this.supplyAmt1);
+        this.supplyAmt2 = ((this.isEmpty(this.supplyAmt2) || isNaN(this.supplyAmt2)) ? 0 : this.supplyAmt2);
+        this.supplyAmt3 = ((this.isEmpty(this.supplyAmt3) || isNaN(this.supplyAmt3)) ? 0 : this.supplyAmt3);
+        this.supplyAmt4 = ((this.isEmpty(this.supplyAmt4) || isNaN(this.supplyAmt4)) ? 0 : this.supplyAmt4);
+        this.supplyAmt5 = ((this.isEmpty(this.supplyAmt5) || isNaN(this.supplyAmt5)) ? 0 : this.supplyAmt5);
+        this.supplyAmt6 = ((this.isEmpty(this.supplyAmt6) || isNaN(this.supplyAmt6)) ? 0 : this.supplyAmt6);
+        this.supplyAmt7 = ((this.isEmpty(this.supplyAmt7) || isNaN(this.supplyAmt7)) ? 0 : this.supplyAmt7);
+        this.supplyAmt8 = ((this.isEmpty(this.supplyAmt8) || isNaN(this.supplyAmt8)) ? 0 : this.supplyAmt8);
+
+        this.totalSupplyAmt = (this.supplyAmt1 +
+                              this.supplyAmt2 +
+                              this.supplyAmt3 +
+                              this.supplyAmt4 +
+                              this.supplyAmt5 +
+                              this.supplyAmt6 +
+                              this.supplyAmt7 +
+                              this.supplyAmt8);
+
+        // 원화, 세금계산서일때
+        if (this.KRWDialogVisible && this.taxType === '1') {
+          this.vat = Math.round(parseFloat(this.totalSupplyAmt * 0.1));
+          this.totalSupplyAmt = this.totalSupplyAmt + this.vat;
+        }
+      } catch (error) {
+        this.totalSupplyAmt = 0;
+        this.vat = 0;
+      }
+    },
+    onHandleVat() {
+      // 부가세 수정시에는 단순 더하기
+      try {
+        this.supplyAmt1 = ((this.isEmpty(this.supplyAmt1) || isNaN(this.supplyAmt1)) ? 0 : this.supplyAmt1);
+        this.supplyAmt2 = ((this.isEmpty(this.supplyAmt2) || isNaN(this.supplyAmt2)) ? 0 : this.supplyAmt2);
+        this.supplyAmt3 = ((this.isEmpty(this.supplyAmt3) || isNaN(this.supplyAmt3)) ? 0 : this.supplyAmt3);
+        this.supplyAmt4 = ((this.isEmpty(this.supplyAmt4) || isNaN(this.supplyAmt4)) ? 0 : this.supplyAmt4);
+        this.supplyAmt5 = ((this.isEmpty(this.supplyAmt5) || isNaN(this.supplyAmt5)) ? 0 : this.supplyAmt5);
+        this.supplyAmt6 = ((this.isEmpty(this.supplyAmt6) || isNaN(this.supplyAmt6)) ? 0 : this.supplyAmt6);
+        this.supplyAmt7 = ((this.isEmpty(this.supplyAmt7) || isNaN(this.supplyAmt7)) ? 0 : this.supplyAmt7);
+        this.supplyAmt8 = ((this.isEmpty(this.supplyAmt8) || isNaN(this.supplyAmt8)) ? 0 : this.supplyAmt8);
+
+        this.totalSupplyAmt = (this.supplyAmt1 +
+                              this.supplyAmt2 +
+                              this.supplyAmt3 +
+                              this.supplyAmt4 +
+                              this.supplyAmt5 +
+                              this.supplyAmt6 +
+                              this.supplyAmt7 +
+                              this.supplyAmt8);
+
+        this.totalSupplyAmt = this.totalSupplyAmt + this.vat;
+      } catch (error) {
+        this.totalSupplyAmt = 0;
+        this.vat = 0;
+      }
+    },
+    onHandleCorrectionAmt() {
+      this.correctionAmt = ((this.isEmpty(this.correctionAmt) || isNaN(this.correctionAmt)) ? 0 : this.correctionAmt);
+      this.paymentAmt = new BigNumber(this.originPaymentAmt).plus(new BigNumber(this.correctionAmt)).toNumber();
+      this.onHandlefrnPaymentAmt();
+    },
+    onHandlefrnPaymentAmt() {
+      if (this.isDiffCurrency) {
+        if (this.isEmpty(this.frnExchangeCost) || isNaN(this.frnExchangeCost)) {
+          this.frnExchangeCost = 0;
+        }
+
+        if (this.frnExchangeCost !== 0) {
+          // 반올림(핏룸업체지급액총합 / 송금 보낼 때 환율, 2)
+          let paymentAmt = new BigNumber(this.isEmpty(this.paymentAmt) || isNaN(this.paymentAmt) ? 0 : this.paymentAmt);
+          let frnExchangeCost = new BigNumber(this.frnExchangeCost);
+          let frnStandardCost = new BigNumber(this.payCurrencyCode === 'JPY' ? 100 : 1);
+          this.frnPaymentAmt = paymentAmt.multipliedBy(frnStandardCost).div(frnExchangeCost).dp(2, BigNumber.ROUND_HALF_UP).toNumber();
+
+          // console.log(paymentAmt.div(frnExchangeCost).toNumber());
+          // console.log(paymentAmt.div(frnExchangeCost).dp(2, BigNumber.ROUND_HALF_UP).toNumber());
+        } else {
+          this.frnPaymentAmt = 0;
+        }
+      }
+    },
+    onHandleBankAccnt(val) {
+      const reg = /[^0-9,-\s]/gi;
+      if (reg.exec(val) !== null) {
+        messageBox.show('', `은행계좌에는 '-' 또는 공백 또는 숫자만 입력 가능합니다.`);
+        this.domBank.bankAccnt = '';
+        this.intBank.bankAccnt = '';
+        return false;
+      }
+    },
+    formatPayReqInvoice(row) { // 지급유형 XML, INVOICE, CTS, VCC
+      const item = store.getters.commonCode['invoiceType'].findValue((x) => x.detailCode, row.invoiceType);
+      if ( item && item.detailCodeNameKr ) {
+        return item.detailCodeNameKr;
+      }
+    },
+    setDept() {
+      if (!this.isEmpty(this.$refs.dept1)) {
+        this.$refs.dept1.setData(this.dept1);
+      }
+      if (!this.isEmpty(this.$refs.dept2)) {
+        this.$refs.dept2.setData(this.dept2);
+      }
+      if (!this.isEmpty(this.$refs.dept3)) {
+        this.$refs.dept3.setData(this.dept3);
+      }
+      if (!this.isEmpty(this.$refs.dept4)) {
+        this.$refs.dept4.setData(this.dept4);
+      }
+      if (!this.isEmpty(this.$refs.dept5)) {
+        this.$refs.dept5.setData(this.dept5);
+      }
+      if (!this.isEmpty(this.$refs.dept6)) {
+        this.$refs.dept6.setData(this.dept6);
+      }
+      if (!this.isEmpty(this.$refs.dept7)) {
+        this.$refs.dept7.setData(this.dept7);
+      }
+      if (!this.isEmpty(this.$refs.dept8)) {
+        this.$refs.dept8.setData(this.dept8);
+      }
+    },
+    setDomBank() {
+      if (!this.isEmpty(this.$refs.domBank)) {
+        this.$refs.domBank.setData(this.domBank);
+      }
+    },
+    setRelevantDraft() {
+      if (!this.isEmpty(this.$refs.relevantDraft)) {
+        this.$refs.relevantDraft.setData(this.relevantDraft);
+      }
+    }
+  }
+};
+</script>
+
+<style lang="scss" scoped>
+.table-basic {
+  cursor: default;
+  th {
+    font-weight: bold;
+    text-align: left;
+    background: #f5f7fa;
+  }
+}
+.fade-enter-active, .fade-leave-active {
+  transition: opacity .5s;
+}
+.fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
+  opacity: 0;
+}
+</style>

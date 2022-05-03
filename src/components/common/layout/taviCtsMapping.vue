@@ -1,0 +1,459 @@
+<template>
+<el-dialog :visible.sync="dialogVisible" width="95%" min-height="90%" :show-close="false" :destroy-on-close="false">
+  <div class="flex-scroll-y" style="padding-right:5px;">
+    <div class="panel panel-flat">
+      <div class="panel-head text-right">
+        <el-row>
+          <fr-button type="R" size="small" @click="onHandleLoadData">조회</fr-button>
+          <fr-button type="U" size="small" @click="onHandleMergeMapping">선택 매핑</fr-button>
+          <fr-button type="D" size="small" @click="handleCloseButton">닫기</fr-button>
+        </el-row>
+      </div>
+    </div>
+    <div class="layout-container">
+      <div class="section" style="width:50%;">
+        <div class="panel panel-flat">
+          <div class="panel-head">
+            <h6 class="fl panel-title p-10">TAVI 수불정산(CTS) 데이터 - {{upperLeftDataCount}} 건</h6>
+          </div>
+          <div class="panel-body">
+            <div class="m-h-10">
+              <fr-table height="500" :data="upperLeftData" :border="true" selectionMode="single" @sortByColumn="upperLeftDataSortHandler">
+                <template slot-scope="scope" slot="cardClientList">
+                  <div>{{getCardClientList(scope.row)}}</div>
+                </template>
+                <fr-table-column label="선택" prop='isChecked' type="select" :width="45" fixed />
+                <fr-table-column label="판매채널" prop='salesType' :width="90" align="center" sortColumn="salesType" :formatter="formatHandler" />
+                <fr-table-column label="체크인" prop='checkinDate' :width="90" align="center" type="date" sortColumn="checkinDate" />
+                <fr-table-column label="예약번호" prop='bookingNo' :width="70" align="center" sortColumn="bookingNo" />
+                <fr-table-column label="정산통화" prop='standardCurrencyCode' :width="70" align="center" sortColumn="standardCurrencyCode" />
+                <fr-table-column label="업체지급액\n(외화)" prop='supplyPaymentInt' :width="100" header-align="center" align="right" type="currency" sortColumn="supplyPaymentInt" />
+                <fr-table-column label="호텔명" prop='htlNameKr' :width="200" align="center" sortColumn="htlNameKr" />
+                <fr-table-column label="가맹점명" prop='cardClientList' :width="300" align="center" slotName="cardClientList" sortColumn="cardClientList" />
+                <fr-table-column label="국내외" prop='localeType' :width="80" align="center" :formatter="formatHandler" sortColumn="localeType" />
+                <!-- <fr-table-column label="가맹점\n사업자번호" prop='city' :width="125" align="center" />
+                <fr-table-column label="가맹점\n업종코드" prop='city' :width="120" align="center" /> -->
+              </fr-table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section" style="width:50%;">
+        <div class="panel panel-flat">
+          <div class="panel-head">
+            <div class="col-md-5">
+              <h6 class="fl panel-title p-10">CTS 이용내역 데이터 - <span v-if="isFulldata">{{upperRightDataCount}} 건</span><span v-else>{{upperRightFilteredDataCount}} 건</span></h6>
+            </div>
+            <div class="col-md-7">
+              <el-input class="fr" placeholder="승인번호(숫자) / 카드번호(4자리) / 가맹점명(문자) / 통화코드(3자리)" size="small" style="width:100" v-model="ctsApprovalNoSearchInput" @change="ctsApprovalNoSearch" clearable/>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="m-h-10">
+              <fr-table height="500" :data="upperRightData" :border="true" v-if="isFulldata" @sortByColumn="upperRightDataSortHandler">
+                <fr-table-column label="선택" prop='isChecked' type="select" :width="45" fixed />
+                <fr-table-column label="이용일자" prop='tciUseDate' :width="90" align="center" type="date" sortColumn="tciUseDate" />
+                <fr-table-column label="승인번호" prop='tciApprovalNo' :width="95" align="center" sortColumn="tciApprovalNo" />
+                <fr-table-column label="카드번호" prop='tciCardNum' :width="80" align="center" :formatter="formatHandler" sortColumn="tciCardNum" />
+                <fr-table-column label="승인여부" prop='tciDealType' :width="80" align="center" :formatter="formatHandler" sortColumn="tciDealType" />
+                <fr-table-column label="통화코드" prop='tciChargeCurrencyCode' :width="80" align="center" sortColumn="tciChargeCurrencyCode" />
+                <fr-table-column label="청구금액" :width="100" header-align="center" align="right" :formatter="getCtsChargeAmt" sortColumn="ctsChargeAmt"/>
+                <fr-table-column label="가맹점" prop='tciCardClientName' :width="300" align="center" sortColumn="tciCardClientName" />
+                <fr-table-column label="가맹점\n사업자번호" prop='tciCardClientBusinessNum' :width="150" align="center"  sortColumn="tciCardClientBusinessNum"/>
+              </fr-table>
+              <fr-table height="500" :data="upperRightFilteredData" :border="true" v-else @sortByColumn="upperRightFilteredDataSortHandler">
+                <fr-table-column label="선택" prop='isChecked' type="select" :width="45" fixed />
+                <fr-table-column label="이용일자" prop='tciUseDate' :width="90" align="center" type="date"/>
+                <fr-table-column label="승인번호" prop='tciApprovalNo' :width="95" align="center" />
+                <fr-table-column label="카드번호" prop='tciCardNum' :width="80" align="center" :formatter="formatHandler" />
+                <fr-table-column label="승인여부" prop='tciDealType' :width="80" align="center" :formatter="formatHandler" />
+                <fr-table-column label="통화코드" prop='tciChargeCurrencyCode' :width="80" align="center" />
+                <fr-table-column label="청구금액" :width="100" header-align="center" align="right" :formatter="getCtsChargeAmt"/>
+                <fr-table-column label="가맹점" prop='tciCardClientName' :width="300" align="center" />
+                <fr-table-column label="가맹점\n사업자번호" prop='tciCardClientBusinessNum' :width="150" align="center" />
+              </fr-table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="layout-container">
+      <div class="section" style="width:100%;">
+        <div class="panel panel-flat">
+          <div class="panel-head text-right">
+            <el-row>
+              <fr-button type="D" @click="onHandleSplitMapping" size="small" :disabled="!isFulldata">매핑 해제</fr-button>
+              <fr-button type="U" @click="onHandleSaveMapping" size="small">저장</fr-button>
+            </el-row>
+            <h6 class="fl panel-title p-10">CTS Matched Data (CTS) - {{bottomMergedDataCount}} 건</h6>
+          </div>
+          <div class="panel-body">
+            <div class="m-h-10">
+              <fr-table height="500" :data="bottomMergedData" :border="true" @sortByColumn="bottomMergedDataSortHandler">
+                <template slot-scope="scope" slot="cardClientList">
+                  <div>{{getCardClientList(scope.row)}}</div>
+                </template>
+                <fr-table-column label="선택" prop='isChecked' type="select" :width="50" fixed />
+                <fr-table-column label="예약번호" prop="bookingNo" :width="100" align="center" sortColumn="bookingNo" />
+                <fr-table-column label="국내 외\n(카드번호)" prop="tciCardNum" :width="100" align="center" sortColumn="tciCardNum" />
+                <fr-table-column label="CTS 대사기준 #1" align="center" >
+                  <fr-table-column label="체크인" prop="checkinDate" :width="100" align="center" type="date" sortColumn="checkinDate" />
+                  <fr-table-column label="이용일자" prop="tciUseDate" :width="100" align="center" type="date" sortColumn="tciUseDate" />
+                </fr-table-column>
+                <fr-table-column label="CTS 대사기준 #2" align="center" >
+                  <fr-table-column label="호텔명" prop='htlNameKr' :width="250" align="center" sortColumn="htlNameKr"/>
+                  <fr-table-column label="가맹점명" prop='cardClientList' :width="350" align="center" slotName="cardClientList" sortColumn="cardClientList"/>
+                  <fr-table-column label="가맹점" prop="tciCardClientName" :width="300" align="center" sortColumn="tciCardClientName"/>
+                </fr-table-column>
+                <fr-table-column label="CTS 대사기준 #3" align="center" >
+                  <fr-table-column label="정산통화" prop="standardCurrencyCode" :width="90" align="center" sortColumn="standardCurrencyCode"/>
+                  <fr-table-column label="통화코드" prop="tciChargeCurrencyCode" :width="90" align="center" sortColumn="tciChargeCurrencyCode"/>
+                </fr-table-column>
+                <fr-table-column label="TAVI CTS 대사정보" align="center" >
+                  <fr-table-column label="업체지급액\n(외화)" prop="supplyPaymentInt" :width="110" header-align="center" align="right" type="currency" sortColumn="supplyPaymentInt"/>
+                  <fr-table-column label="청구금액" :width="110" header-align="center" align="right" :formatter="getCtsChargeAmt" sortColumn="ctsChargeAmt"/>
+                  <fr-table-column label="청구차액" :width="110" header-align="center" align="right" :formatter="getTciIntLocalAmt2" sortColumn="tciIntLocalAmt"/>
+                  <fr-table-column label="오류/불일치" prop="error" :width="100" align="center" :formatter="formatHandler" sortColumn="error"/>
+                </fr-table-column>
+                <fr-table-column label="TAVI 수불정산 데이터" align="center">
+                  <fr-table-column label="승인번호" prop="tciApprovalNo" :width="100" align="center" sortColumn="tciApprovalNo"/>
+                  <fr-table-column label="정산년월" prop="calcRevenueMonth" :width="100" align="center" sortColumn="calcRevenueMonth"/>
+                  <fr-table-column label="예약상태" prop="bookingState" :width="100" align="center" :formatter="formatHandler" sortColumn="bookingState"/>
+                  <fr-table-column label="채널판매가\n(외화)" prop="channelSaleInt" :width="110" header-align="center" align="right" type="currency" sortColumn="channelSaleInt"/>
+                  <fr-table-column label="업체지급액\n(외화)" prop="supplyPaymentInt" :width="110" header-align="center" align="right" type="currency" sortColumn="supplyPaymentInt"/>
+                  <fr-table-column label="공급원가\n(외화)" prop="supplyNetInt" :width="100" header-align="center" align="right" type="currency" sortColumn="supplyNetInt"/>
+                  <fr-table-column label="추가금액\n(외화)" prop="addFareInt" :width="100" header-align="center" align="right" type="currency" sortColumn="addFareInt"/>
+                  <fr-table-column label="M/U(외화)" prop="markupInt" :width="100" header-align="center" align="right" type="currency" sortColumn="markupInt"/>
+                  <fr-table-column label="국내외" prop="localeType" :width="100" align="center" :formatter="formatHandler" sortColumn="localeType"/>
+                  <fr-table-column label="거래타입" prop="tradeType" :width="100" align="center" sortColumn="tradeType"/>
+                  <fr-table-column label="체크인" prop="checkinDate" :width="100" align="center" type="date" sortColumn="checkinDate"/>
+                  <fr-table-column label="체크아웃" prop="checkoutDate" :width="100" align="center" type="date" sortColumn="checkoutDate"/>
+                  <fr-table-column label="예약일" prop="bookingReqsDt" :width="100" align="center" type="date" sortColumn="bookingReqsDt"/>
+                  <fr-table-column label="예약변경일" prop="bookingModifiedDt" :width="100" align="center" type="date" sortColumn="bookingModifiedDt"/>
+                  <fr-table-column label="마크업\n공급가액" prop="markupSupplyAmt" :width="100" header-align="center" align="right" type="currency" sortColumn="markupSupplyAmt"/>
+                  <fr-table-column label="마크업 부가세" prop="markupVat" :width="100" header-align="center" align="right" type="currency" sortColumn="markupVat"/>
+                </fr-table-column>
+                <fr-table-column label="현대 CTS 이용내역 데이터" align="center">
+                  <fr-table-column label="국내청구금액" prop="tciDomChargeAmt" :width="100" header-align="center" align="right" type="currency" sortColumn="tciDomChargeAmt"/>
+                  <fr-table-column label="가맹점\n사업자번호" prop="tciCardClientBusinessNum" :width="120" align="center" sortColumn="tciCardClientBusinessNum"/>
+                  <fr-table-column label="카드번호" prop="tciCardNum" :width="100" align="center" sortColumn="tciCardNum"/>
+                  <fr-table-column label="승인번호" prop="tciApprovalNo" :width="100" align="center" sortColumn="tciApprovalNo"/>
+                  <fr-table-column label="비고" prop="" :width="100" align="center" />
+                </fr-table-column>
+              </fr-table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</el-dialog>
+</template>
+<script>
+import { commonCodeServiceMixin } from '@/mixins/commonCodeServiceMixin';
+import { handleFormatMixin } from '@/mixins/handleFormatMixin';
+
+export default {
+  name: 'taviCtsMapping',
+  mixins: [commonCodeServiceMixin, handleFormatMixin],
+  props: {
+    searchCondition: {
+      required: false,
+      default: null
+    }
+  },
+  data() {
+    return {
+      dialogVisible: false,
+      upperLeftData: [],
+      upperRightData: [],
+      bottomMergedData: [],
+      calcTaviMastList: [],
+      taviCtsInfoList: [],
+      ctsApprovalNoSearchInput: null,
+      upperRightFilteredData: [],
+      isFulldata: true,
+      upperLeftDataCount: 0,
+      upperRightDataCount: 0,
+      bottomMergedDataCount: 0,
+      upperRightFilteredDataCount: 0,
+      sortOrder: {
+        currentSorting: '',
+        sortingType: '',
+        upperLeftData: {
+          sortColumn: '',
+          sortOrder: 0
+        },
+        upperRightData: {
+          sortColumn: '',
+          sortOrder: 0
+        },
+        bottomMergedData: {
+          sortColumn: '',
+          sortOrder: 0
+        },
+        upperRightFilteredData: {
+          sortColumn: '',
+          sortOrder: 0
+        }
+      }
+    };
+  },
+  created() {
+  },
+  mounted() {
+  },
+  watch: {
+    isFulldata() {
+      this.upperRightData.forEach(data => { data.isChecked = false; });
+      if (!this.isEmpty(this.upperRightFilteredData)) {
+        this.upperRightFilteredData.forEach(data => { data.isChecked = false; });
+      }
+    },
+    upperLeftData() {
+      this.upperLeftDataCount = this.upperLeftData.length;
+    },
+    upperRightData() {
+      this.upperRightDataCount = this.upperRightData.length;
+    },
+    upperRightFilteredData() {
+      this.upperRightFilteredDataCount = this.upperRightFilteredData.length;
+    },
+    bottomMergedData() {
+      this.bottomMergedDataCount = this.bottomMergedData.length;
+    }
+  },
+  methods: {
+    initializeComponent() {
+      this.upperLeftData = [];
+      this.upperRightData = [];
+      this.bottomMergedData = [];
+      this.calcTaviMastList = [];
+      this.taviCtsInfoList = [];
+      this.ctsApprovalNoSearchInput = null;
+      this.upperRightFilteredData = [];
+      this.isFulldata = true;
+    },
+    handleVisible() {
+      this.onHandleLoadData();
+      this.dialogVisible = true;
+    },
+    onHandleLoadData() { // 데이터 가져오기
+      this.initializeComponent();
+      const calcTaviMastUrl = '/api/tc/calcTaviMastList';
+      const taviCtsInfoUrl = '/api/tc/ctsList';
+      const mergedHtlInfoUrl = '/api/tc/ctsMappingList';
+      this.httpGet(calcTaviMastUrl, this.searchCondition).then(res => { //  좌상단(TAVI 수불정산CTS 데이터)
+        if (!this.isEmpty(res)) {
+          res.data.forEach(data => { data.isChecked = false; });
+          this.upperLeftData = res.data;
+        }
+      });
+      this.httpGet(taviCtsInfoUrl, this.searchCondition).then(res => { // 우상단(CTS 이용내역 데이터)
+        if (!this.isEmpty(res)) {
+          res.data.forEach(data => {
+            data.isChecked = false;
+            delete data.error;
+            delete data.facilityNo;
+            delete data.sprId;
+          });
+          this.upperRightData = res.data;
+        }
+      });
+      this.httpGet(mergedHtlInfoUrl, this.searchCondition).then(res => { // 하단(매핑된 데이터)
+        if (!this.isEmpty(res)) {
+          res.data.forEach(data => {
+            data.isChecked = false;
+          });
+          this.bottomMergedData = res.data;
+          this.originData = res.data;
+        }
+      });
+    },
+    onHandleMergeMapping() { // 선택한 항목 매핑
+      let leftChecked = this.upperLeftData.filterBy((x) => x.isChecked, true);
+      let rightChecked = this.upperRightData.filterBy((x) => x.isChecked, true);
+      if (!this.isFulldata) {
+        rightChecked = this.upperRightFilteredData.filterBy((x) => x.isChecked, true);
+      }
+      if (leftChecked.length < 1 || rightChecked.length < 1) {
+        messageBox.show('', '매핑 할 항목을 선택해주세요.');
+      } else {
+        this.upperLeftData.forEach(x => { x.isChecked = false; });
+        this.upperRightData.forEach(x => { x.isChecked = false; });
+        rightChecked.forEach(item => {
+          let mergedData = Object.assign({}, leftChecked[0], item);
+          mergedData.isChecked = false;
+          this.bottomMergedData = this.bottomMergedData.concat(mergedData);
+          if (!this.isFulldata) {
+            this.upperRightData = this.removeCheckedRowFiltered(item, this.upperRightData);
+            this.upperRightFilteredData = this.removeCheckedRow(item, this.upperRightFilteredData);
+          } else {
+            this.upperRightData = this.removeCheckedRow(item, this.upperRightData);
+          }
+        });
+        /* this.ctsApprovalNoSearchInput = null;
+        this.isFulldata = true; */
+      }
+    },
+    onHandleSplitMapping() { // 선택한 항목들 매핑 해제
+      const bottomCheckedList = this.bottomMergedData.filterBy((x) => x.isChecked, true);
+      if (bottomCheckedList.length < 1) {
+        messageBox.show('', '매핑 해제 할 항목을 선택해주세요.');
+      } else {
+        bottomCheckedList.forEach(bottomChecked => {
+          bottomChecked.isChecked = false;
+          if (this.isEmpty(this.upperLeftData.find(data => data.bookingNo === bottomChecked.bookingNo))) {
+            const leftAppendData = Object.assign({}, { // FADEOUT CTS 일대다로 로직변경
+              bookingNo: bottomChecked.bookingNo, //  예약번호
+              htlNameKr: bottomChecked.htlNameKr, //  호텔명
+              cardClientList: bottomChecked.cardClientList, //  가맹점명
+              standardCurrencyCode: bottomChecked.standardCurrencyCode, //  정산통화
+              supplyPaymentInt: bottomChecked.supplyPaymentInt, //  업체지급액 (외화)
+              error: bottomChecked.error, //  오류/불일치 여부
+              calcRevenueMonth: bottomChecked.calcRevenueMonth, //  정산년월
+              bookingState: bottomChecked.bookingState, //  예약상태
+              supplyNetInt: bottomChecked.supplyNetInt, //  공급원가 (외화)
+              addFareInt: bottomChecked.addFareInt, //  추가금액 (외화)
+              markupInt: bottomChecked.markupInt, //  M/U (외화)
+              localeType: bottomChecked.localeType, //  국내외
+              checkinDate: bottomChecked.checkinDate, //  체크인
+              checkoutDate: bottomChecked.checkoutDate, //  체크아웃
+              bookingReqsDt: bottomChecked.bookingReqsDt, //  예약일
+              bookingModifiedDt: bottomChecked.bookingModifiedDt, //  예약변경일
+              markupSupplyAmt: bottomChecked.markupSupplyAmt, //  마크업 공급가액
+              markupVat: bottomChecked.markupVat, //  마크업 부가세
+              isChecked: false
+            }); //  TAVI 수불정산 데이터로 분해 */
+            this.upperLeftData = this.upperLeftData.concat(leftAppendData);
+          }
+          const rightAppendData = Object.assign({}, {
+            tciCtsInfoId: bottomChecked.tciCtsInfoId, //  기준값
+            tciCardNum: bottomChecked.tciCardNum, //  국내외(카드번호)
+            tciUseDate: bottomChecked.tciUseDate, //  이용일자
+            tciCardClientName: bottomChecked.tciCardClientName, //  가맹점
+            tciChargeCurrencyCode: bottomChecked.tciChargeCurrencyCode, //  통화코드
+            tciDealType: bottomChecked.tciDealType, //  승인여부
+            tciIntLocalAmt: bottomChecked.tciIntLocalAmt, //  현지금액 (외화)
+            tciApprovalNo: bottomChecked.tciApprovalNo, //  승인번호
+            tciDomChargeAmt: bottomChecked.tciDomChargeAmt, //  국내청구금액
+            tciCardClientBusinessNum: bottomChecked.tciCardClientBusinessNum, //  가맹점사업자번호
+            isChecked: false
+          }); //  CTS 이용내역으로 분해
+          this.upperRightData = this.upperRightData.concat(rightAppendData);
+          this.bottomMergedData = this.removeCheckedRow(bottomChecked, this.bottomMergedData);
+        });
+      }
+    },
+    onHandleSaveMapping() { //  매핑 된 항목 저장
+      const saveData = this.bottomMergedData;
+      const originData = this.originData;
+      const tmpDelList = originData.filter(function(obj) {
+        return !saveData.some(function(obj2) {
+          return obj.bookingNo === obj2.bookingNo && obj.tciCtsInfoId === obj2.tciCtsInfoId;
+        });
+      });
+      const tmpAddList = saveData.filter(function(obj) {
+        return !originData.some(function(obj2) {
+          return obj.bookingNo === obj2.bookingNo && obj.tciCtsInfoId === obj2.tciCtsInfoId;
+        });
+      });
+      let delList = [];
+      let addList = [];
+      tmpDelList.forEach(item => {
+        delList.push({'bookingNo': item.bookingNo, 'targetId': item.tciCtsInfoId});
+      });
+      tmpAddList.forEach(item => {
+        addList.push({'bookingNo': item.bookingNo, 'targetId': item.tciCtsInfoId});
+      });
+      let data = Object.assign({}, {'addList': addList}, {'delList': delList});
+      if (delList.length === 0 && addList.length === 0) {
+        messageBox.show('', '변경된 데이터가 없습니다.');
+      } else {
+        this.httpPost('/api/tc/ctsMapping', data).then(() => {
+          this.onHandleLoadData();
+          messageBox.show('', '저장 되었습니다.');
+        });
+      }
+    },
+    removeCheckedRow(checked, data) { // 체크하여 처리 된 항목은 그리드에서 삭제
+      return data.filter(function(filtered) {
+        return filtered !== checked;
+      });
+    },
+    removeCheckedRowFiltered(checked, data) { //  필터링 된 CTS 데이터 매핑 될 때 전체 데이터에서도 삭제
+      return data.filterBy((x) => x.tciCtsInfoId !== checked.tciCtsInfoId, true);
+    },
+    ctsApprovalNoSearch(input) { // CTS 이용 내역 검색
+      this.isFulldata = this.isEmpty(input);
+      let beforeFilterData = JSON.parse(JSON.stringify(this.upperRightData));
+      if (Number.isInteger(Number(input))) {
+        if (input.length === 4) {
+          this.upperRightFilteredData = beforeFilterData.filterBy(x => x.tciCardNum.indexOf(input) !== -1, true);
+        } else {
+          this.upperRightFilteredData = beforeFilterData.filterBy(x => x.tciApprovalNo.indexOf(input) !== -1, true);
+        }
+      } else {
+        if (this.isValidateAlpha(input) && input.length === 3) {
+          this.upperRightFilteredData = beforeFilterData.filterBy(x => x.tciChargeCurrencyCode.toUpperCase().indexOf(input.toUpperCase()) !== -1, true);
+        } else {
+          this.upperRightFilteredData = beforeFilterData.filterBy(x => x.tciCardClientName.toUpperCase().indexOf(input.toUpperCase()) !== -1, true);
+        }
+      }
+    },
+    upperLeftDataSortHandler(col, type) { //  정렬용
+      this.handleSortOrder(col, type, 'upperLeftData');
+    },
+    upperRightDataSortHandler(col, type) {
+      this.handleSortOrder(col, type, 'upperRightData');
+    },
+    bottomMergedDataSortHandler(col, type) {
+      this.handleSortOrder(col, type, 'bottomMergedData');
+    },
+    upperRightFilteredDataSortHandler(col, type) {
+      this.handleSortOrder(col, type, 'upperRightFilteredData');
+    },
+    handleSortOrder(col, type, target) { // col:클릭한 컬럼 / type:컬럼의 타입 / target:정렬대상
+      this.sortOrder.currentSorting = target;
+      this.sortOrder.sortingType = type;
+      let sortObj = this.sortOrder[target];
+      if ( sortObj.sortColumn === col) {
+        sortObj.sortOrder = sortObj.sortOrder * -1;
+      } else {
+        sortObj.sortColumn = col;
+        sortObj.sortOrder = 1;
+      }
+      this[target] = this[target].sort(this.sortHandler);
+    },
+    getColumnSortType(col, type) {
+      switch (col) {
+        case 'ctsChargeAmt':
+          return 'ctsChargeAmt';
+        case 'tciIntLocalAmt':
+          return 'tciIntLocalAmt';
+      }
+      return type;
+    },
+    sortHandler(a, b) {
+      const target = this.sortOrder.currentSorting;
+      const order = this.sortOrder[target];
+      const type = this.getColumnSortType(order.sortColumn, this.sortOrder.sortingType);
+      const order1 = order.sortOrder;
+      const order2 = order1 * -1;
+      const amtColumnA = a.tciChargeCurrencyCode === 'KRW' ? 'tciDomChargeAmt' : 'tciIntLocalAmt';
+      const amtColumnB = b.tciChargeCurrencyCode === 'KRW' ? 'tciDomChargeAmt' : 'tciIntLocalAmt';
+      switch (type) {
+        case 'date': return a[order.sortColumn].toStandardDateString() > b[order.sortColumn].toStandardDateString() ? order1 : (b[order.sortColumn].toStandardDateString() > a[order.sortColumn].toStandardDateString() ? order2 : 0);
+        case 'currency': return Number(a[order.sortColumn]) > Number(b[order.sortColumn]) ? order1 : Number((b[order.sortColumn]) > Number(a[order.sortColumn]) ? order2 : 0);
+        case 'ctsChargeAmt': return Number(a[amtColumnA]) > Number(b[amtColumnB]) ? order1 : Number((b[amtColumnB]) > Number(a[amtColumnA]) ? order2 : 0);
+        case 'tciIntLocalAmt': return Number(a.supplyPaymentInt - a[amtColumnA]) > Number(b.supplyPaymentInt - b[amtColumnB]) ? order1 : Number((b.supplyPaymentInt - b[amtColumnB]) > Number(a.supplyPaymentInt - a[amtColumnA]) ? order2 : 0);
+        default: return a[order.sortColumn] > b[order.sortColumn] ? order1 : (b[order.sortColumn] > a[order.sortColumn] ? order2 : 0);
+      }
+    },
+    handleCloseButton() {
+      this.dialogVisible = false;
+      this.$emit('callback');
+    }
+  }
+};
+</script>
